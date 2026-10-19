@@ -42,9 +42,11 @@ class HomePage extends StatelessWidget {
               ],
             ),
             body: SafeArea(
-              child: book != null
-                  ? BookDetails(book: book)
-                  : _BookList(state: state),
+              child: state.status == BookStatus.loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : book != null
+                      ? BookDetails(book: book)
+                      : _BookList(state: state),
             ),
           ),
         );

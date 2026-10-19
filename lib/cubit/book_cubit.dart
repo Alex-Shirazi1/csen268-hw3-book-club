@@ -86,8 +86,26 @@ class BookCubit extends Cubit<BookState> {
     emit(BookState(books: _sorted(books, BookSort.author)));
   }
 
-  void sortBooks(BookSort sort) {
-    emit(BookState(books: _sorted(state.books, sort), sort: sort));
+  // Loading ensures even the active sort triggers a visible state change.
+  Future<void> sortBooks(BookSort sort) async {
+    emit(
+      BookState(
+        books: state.books,
+        sort: state.sort,
+        selectedBook: state.selectedBook,
+        status: BookStatus.loading,
+      ),
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    if (isClosed) return;
+    emit(
+      BookState(
+        books: _sorted(state.books, sort),
+        sort: sort,
+        selectedBook: state.selectedBook,
+        status: BookStatus.loaded,
+      ),
+    );
   }
 
   void showBook(Book book) {

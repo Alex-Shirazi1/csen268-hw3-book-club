@@ -29,7 +29,8 @@ void main() {
     final original = cubit.state;
     final emitted = <BookState>[];
     final subscription = cubit.stream.listen(emitted.add);
-    cubit.sortBooks(BookSort.title);
+    await cubit.sortBooks(BookSort.title);
+    expect(cubit.state.status, BookStatus.loaded);
     expect(cubit.state.books.map((b) => b.title), [
       'A Clockwork Orange',
       'Carmer and Grit',
@@ -40,15 +41,47 @@ void main() {
     ]);
     expect(original.books.first.author, 'Angelina Aludo');
     expect(() => original.books.clear(), throwsUnsupportedError);
-    cubit.sortBooks(BookSort.author);
+    await cubit.sortBooks(BookSort.author);
     await Future<void>.delayed(Duration.zero);
-    expect(emitted.map((s) => s.sort), [BookSort.title, BookSort.author]);
+    expect(emitted.map((s) => s.status), [
+      BookStatus.loading,
+      BookStatus.loaded,
+      BookStatus.loading,
+      BookStatus.loaded,
+    ]);
+    expect(emitted.last.sort, BookSort.author);
     await subscription.cancel();
   });
 
-  test('detail and back preserve the selected sort and book order', () {
+  test('active sort still emits loading then loaded', () async {
     cubit.init();
-    cubit.sortBooks(BookSort.title);
+    final original = cubit.state;
+    final emitted = <BookState>[];
+    final subscription = cubit.stream.listen(emitted.add);
+    final sorting = cubit.sortBooks(BookSort.author);
+    expect(cubit.state.status, BookStatus.loading);
+    expect(cubit.state.books, original.books);
+    await sorting;
+    await Future<void>.delayed(Duration.zero);
+    expect(emitted.map((s) => s.status), [
+      BookStatus.loading,
+      BookStatus.loaded,
+    ]);
+    expect(cubit.state, original);
+    await subscription.cancel();
+  });
+
+  test('closing during loading safely completes the pending sort', () async {
+    cubit.init();
+    final sorting = cubit.sortBooks(BookSort.title);
+    await cubit.close();
+    await expectLater(sorting, completes);
+  });
+
+  test('detail and back preserve the selected sort and book order', () async {
+    cubit.init();
+    await cubit.sortBooks(BookSort.title);
+    expect(cubit.state.status, BookStatus.loaded);
     final list = cubit.state.books;
     for (final book in list) {
       cubit.showBook(book);
